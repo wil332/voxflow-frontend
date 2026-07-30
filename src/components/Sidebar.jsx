@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { sidebarLinks } from "../data/agents";
-import logo from "../assets/logo.jpeg";
+import logo from "../assets/logo.png"
 
 export default function Sidebar() {
   const location = useLocation();
@@ -8,9 +8,8 @@ export default function Sidebar() {
   return (
     <aside className="h-screen w-64 fixed left-0 top-0 bg-zinc-900 border-r border-white/10 flex flex-col py-2 z-50">
       <div className="px-6 py-4 flex items-center gap-3">
-        {/* Logo dipasang di sini menggunakan variabel yang di-import */}
-        <img src={logo} alt="VoxFlow AI" className="w-8 h-8 rounded-lg object-cover" />
-        <h1 className="text-lg font-bold text-indigo-400 tracking-tight">VoxFlow AI</h1>
+        <img src={logo} alt="VoxFlow AI" className="w-8 h-8 rounded-lg" />
+<h1 className="text-lg font-bold text-indigo-400 tracking-tight">VoxFlow AI</h1>
       </div>
 
       <div className="px-4 mt-2">
@@ -51,16 +50,10 @@ export default function Sidebar() {
           New Project
         </Link>
         <div className="flex flex-col gap-1">
-          <a
-            className="flex items-center gap-3 text-zinc-400 hover:text-zinc-100 px-2 py-1 text-sm transition-colors"
-            href="#"
-          >
+          <a className="flex items-center gap-3 text-zinc-400 hover:text-zinc-100 px-2 py-1 text-sm transition-colors" href="#">
             <span className="material-symbols-outlined text-sm">help</span> Support
           </a>
-          <Link
-            className="flex items-center gap-3 text-zinc-400 hover:text-zinc-100 px-2 py-1 text-sm transition-colors"
-            to="/"
-          >
+          <Link className="flex items-center gap-3 text-zinc-400 hover:text-zinc-100 px-2 py-1 text-sm transition-colors" to="/">
             <span className="material-symbols-outlined text-sm">logout</span> Logout
           </Link>
         </div>
