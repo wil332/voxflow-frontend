@@ -3,7 +3,6 @@
 import { useState } from "react";
 import GlassPanel from "./GlassPanel";
 import { usePipeline } from "../context/usePipeline";
-import { API_BASE_URL } from "../services/api";
 
 const localStatusColor = {
   completed: "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20",
@@ -15,21 +14,17 @@ const localStatusColor = {
 };
 
 export default function EpisodesTable({ episodes = [] }) {
-  const { handleRetry, isLoading } = usePipeline();
+  const { handleRetry, isLoading, getVideoStreamUrl } = usePipeline();
   const [deletingId, setDeletingId] = useState(null);
 
-  // ============================================================
-  // FUNGSI DELETE EPISODE
-  // ============================================================
   const handleDelete = async (id, title) => {
-    // Konfirmasi sebelum delete
     if (!window.confirm(`⚠️ Hapus episode "${title}"? Ini tidak bisa dibatalkan!`)) {
       return;
     }
 
     setDeletingId(id);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/podcast/episode/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "https://voxflow-backend-production.up.railway.app"}/api/v1/podcast/episode/${id}`, {
         method: "DELETE",
       });
 
@@ -39,10 +34,7 @@ export default function EpisodesTable({ episodes = [] }) {
       }
 
       alert(`✅ Episode "${title}" berhasil dihapus!`);
-
-      // Refresh halaman untuk update data
       window.location.reload();
-
     } catch (error) {
       alert(`❌ Gagal menghapus: ${error.message}`);
     } finally {
@@ -73,9 +65,6 @@ export default function EpisodesTable({ episodes = [] }) {
         <tbody>
           {episodes.length > 0 ? (
             episodes.map((ep) => {
-              // ============================================================
-              // KONDISI: Tampilkan tombol delete hanya jika status bukan "processing"
-              // ============================================================
               const canDelete = ep.status !== "processing" && ep.status !== "pending";
               const isDeleting = deletingId === ep.id;
 
@@ -119,10 +108,9 @@ export default function EpisodesTable({ episodes = [] }) {
                   <td className="py-3 text-zinc-500 text-xs">{ep.startedAt || "Baru saja"}</td>
                   <td className="py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      {/* Tombol View - hanya untuk completed */}
                       {ep.status === "completed" && ep.videoFilename && (
                         <a
-                          href={`${API_BASE_URL}/api/v1/podcast/video/${ep.videoFilename}`}
+                          href={getVideoStreamUrl(ep.videoFilename)}
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs text-emerald-400 hover:text-emerald-300 font-bold px-2 py-1 rounded hover:bg-emerald-400/10 transition"
@@ -131,7 +119,6 @@ export default function EpisodesTable({ episodes = [] }) {
                         </a>
                       )}
 
-                      {/* Tombol Retry - hanya untuk failed */}
                       {ep.status === "failed" && (
                         <button
                           onClick={() => handleRetry(ep.id, ep.title)}
@@ -142,9 +129,6 @@ export default function EpisodesTable({ episodes = [] }) {
                         </button>
                       )}
 
-                      {/* ============================================================
-                      TOMBOL DELETE - Hanya muncul jika canDelete = true
-                      ============================================================ */}
                       {canDelete && (
                         <button
                           onClick={() => handleDelete(ep.id, ep.title)}
