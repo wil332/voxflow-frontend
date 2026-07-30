@@ -1,4 +1,6 @@
-import {  useEffect, useRef } from "react";
+// src/pages/Dashboard.jsx
+
+import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import GlassPanel from "../components/GlassPanel";
@@ -95,24 +97,25 @@ export default function Dashboard() {
   }));
 
   // ============================================================
-  // VIDEO & AUDIO URL
+  // VIDEO & AUDIO URL - DEKLARASIKAN DAHULU SEBELUM LOG
   // ============================================================
-
-
-    console.log("video_filename =", latestEpisode?.video_filename);
-console.log("videoUrl =", videoUrl);
-
   const videoUrl = latestEpisode?.video_filename
-  ? getVideoStreamUrl(latestEpisode.video_filename)
-  : currentJob?.videoUrl || null;
+    ? getVideoStreamUrl(latestEpisode.video_filename)
+    : currentJob?.videoUrl || null;
 
-const audioUrl = latestEpisode?.merged_audio_filename
-  ? getAudioDownloadUrl(latestEpisode.merged_audio_filename)
-  : currentJob?.audioUrl || null;
-    console.log("currentJob =", currentJob);
-console.log("latestEpisode =", latestEpisode);
-console.log("merged_audio_filename =", latestEpisode?.merged_audio_filename);
-console.log("audioUrl =", audioUrl);
+  const audioUrl = latestEpisode?.merged_audio_filename
+    ? getAudioDownloadUrl(latestEpisode.merged_audio_filename)
+    : currentJob?.audioUrl || null;
+
+  // ============================================================
+  // DEBUG LOG (SETELAH DEKLARASI)
+  // ============================================================
+  console.log("[DASHBOARD] video_filename =", latestEpisode?.video_filename);
+  console.log("[DASHBOARD] videoUrl =", videoUrl);
+  console.log("[DASHBOARD] merged_audio_filename =", latestEpisode?.merged_audio_filename);
+  console.log("[DASHBOARD] audioUrl =", audioUrl);
+  console.log("[DASHBOARD] currentJob =", currentJob);
+  console.log("[DASHBOARD] latestEpisode =", latestEpisode);
 
   // ============================================================
   // PROGRESS
@@ -374,14 +377,14 @@ console.log("audioUrl =", audioUrl);
             View All
           </a>
           <a
-  href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/api/v1/podcast/rss`}
-  target="_blank"
-  rel="noreferrer"
-  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-bold"
->
-  <span className="material-symbols-outlined text-sm">rss_feed</span>
-  RSS Feed
-</a>
+            href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/api/v1/podcast/rss`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-bold"
+          >
+            <span className="material-symbols-outlined text-sm">rss_feed</span>
+            RSS Feed
+          </a>
         </div>
         <EpisodesTable episodes={formattedEpisodes} />
       </section>
