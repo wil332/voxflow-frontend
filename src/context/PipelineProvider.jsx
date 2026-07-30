@@ -219,6 +219,8 @@ export function PipelineProvider({ children }) {
           return newState;
         });
 
+`       setCurrentJob(null);`
+
         stopPolling();
         setIsLoading(false);
         await fetchHistory();
