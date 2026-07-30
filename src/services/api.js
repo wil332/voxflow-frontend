@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://voxflow-backend-production.up.railway.app";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://voxflow-backend-production.up.railway.app";
 
 async function handleResponse(res, errorMessage) {
   if (!res.ok) {
