@@ -102,6 +102,10 @@ export function getVideoStreamUrl(filename) {
   return `${API_BASE_URL}/api/v1/podcast/video/${cleanName}`;
 }
 
+export async function getJobStatus(jobId) {
+  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/status/${jobId}`);
+  return handleResponse(res, "Gagal mengambil status job");
+}
 // POST /api/v1/podcast/upload-tiktok
 export async function uploadToTikTok({ videoFilename, title, description, tags, cta }) {
   const res = await fetch(`${API_BASE_URL}/api/v1/podcast/upload-tiktok`, {
