@@ -21,22 +21,20 @@ export default function AudioEngine() {
   const [renderResult, setRenderResult] = useState(null);
 
   const latestEpisode = getLatestEpisode();
-  const audioUrl = latestEpisode?.merged_audio_filename
-  ? getAudioDownloadUrl(latestEpisode.merged_audio_filename)
-  : currentJob?.audioUrl
-  ? getAudioDownloadUrl(currentJob.audioUrl)
-  : null;
+
 
     console.log("currentJob =", currentJob);
 console.log("latestEpisode =", latestEpisode);
 console.log("merged_audio_filename =", latestEpisode?.merged_audio_filename);
 console.log("audioUrl =", audioUrl);
 
-  const videoUrl = latestEpisode?.video_filename
+  const audioUrl = latestEpisode?.merged_audio_filename
+  ? getAudioDownloadUrl(latestEpisode.merged_audio_filename)
+  : currentJob?.audioUrl || null;
+
+const videoUrl = latestEpisode?.video_filename
   ? getVideoStreamUrl(latestEpisode.video_filename)
-  : currentJob?.videoUrl
-  ? getVideoStreamUrl(currentJob.videoUrl)
-  : null;
+  : currentJob?.videoUrl || null;
 
     console.log("video_filename =", latestEpisode?.video_filename);
 console.log("videoUrl =", videoUrl);

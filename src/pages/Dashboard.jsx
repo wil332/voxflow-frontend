@@ -97,20 +97,18 @@ export default function Dashboard() {
   // ============================================================
   // VIDEO & AUDIO URL
   // ============================================================
-  const videoUrl = latestEpisode?.video_filename
-  ? getVideoStreamUrl(latestEpisode.video_filename)
-  : currentJob?.videoUrl
-  ? getVideoStreamUrl(currentJob.videoUrl)
-  : null;
+
 
     console.log("video_filename =", latestEpisode?.video_filename);
 console.log("videoUrl =", videoUrl);
 
-  const audioUrl = latestEpisode?.merged_audio_filename
+  const videoUrl = latestEpisode?.video_filename
+  ? getVideoStreamUrl(latestEpisode.video_filename)
+  : currentJob?.videoUrl || null;
+
+const audioUrl = latestEpisode?.merged_audio_filename
   ? getAudioDownloadUrl(latestEpisode.merged_audio_filename)
-  : currentJob?.audioUrl
-  ? getAudioDownloadUrl(currentJob.audioUrl)
-  : null;
+  : currentJob?.audioUrl || null;
     console.log("currentJob =", currentJob);
 console.log("latestEpisode =", latestEpisode);
 console.log("merged_audio_filename =", latestEpisode?.merged_audio_filename);
