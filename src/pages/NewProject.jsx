@@ -193,9 +193,7 @@ export default function NewProject() {
                   <option value="10-15">⏱️ 10-15 minutes</option>
                   <option value="15-20">⏱️ 15-20 minutes</option>
                 </select>
-                <p className="text-[10px] text-amber-400 mt-1">
-                  ⚠️ Belum dikirim ke backend (belum ada parameter durasi di pipeline)
-                </p>
+
               </div>
 
               <div>
