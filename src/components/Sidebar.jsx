@@ -8,7 +8,6 @@ export default function Sidebar() {
   return (
     <aside className="h-screen w-64 fixed left-0 top-0 bg-zinc-900 border-r border-white/10 flex flex-col py-2 z-50">
       <div className="px-6 py-4 flex items-center gap-3">
-        <img src={logo} alt="VoxFlow AI" className="w-8 h-8 rounded-lg" />
 <h1 className="text-lg font-bold text-indigo-400 tracking-tight">VoxFlow AI</h1>
       </div>
 
