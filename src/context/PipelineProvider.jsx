@@ -225,16 +225,7 @@ export function PipelineProvider({ children }) {
         setIsLoading(false);
         await fetchHistory();
 
-        setCurrentJob(prev => ({
-          ...prev,
-          status: "completed",
-          videoUrl: status.video_url || null,
-          audioUrl: status.audio_url || null,
-          metadata: status.metadata || null,
-          tiktokStatus: status.tiktok_status,
-          tiktokUrl: status.tiktok_url,
-          tiktokError: status.tiktok_error,
-        }));
+
 
       } else if (status.status === "failed") {
         console.log("[POLLING] ❌ Pipeline failed!");
