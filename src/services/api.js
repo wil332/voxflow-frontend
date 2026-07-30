@@ -1,8 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://voxflow-backend-production.up.railway.app";
 
-/**
- * Helper internal untuk menangani error response dari fetch
- */
 async function handleResponse(res, errorMessage) {
   if (!res.ok) {
     let detail = errorMessage;
@@ -17,18 +14,29 @@ async function handleResponse(res, errorMessage) {
   return res.json();
 }
 
-// 1. Cek Server Status — GET /
-export async function checkServerStatus() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/`);
-    return await handleResponse(res, "Server tidak merespons");
-  } catch (err) {
-    console.error("checkServerStatus Error:", err);
-    throw err;
-  }
+// Bersihkan filename dari path/encoding berlebih, apapun format yang dikirim backend
+function extractCleanFilename(raw) {
+  if (!raw) return "";
+  let value = raw;
+  let previous;
+  do {
+    previous = value;
+    try {
+      value = decodeURIComponent(value);
+    } catch {
+      break;
+    }
+  } while (value !== previous);
+  const segments = value.split("/").filter(Boolean);
+  return segments[segments.length - 1] || "";
 }
 
-// 2. Health Check Endpoint Internal
+// GET /
+export async function checkServerStatus() {
+  const res = await fetch(`${API_BASE_URL}/`);
+  return handleResponse(res, "Server tidak merespons");
+}
+
 export async function getHealthStatus() {
   try {
     const res = await fetch(`${API_BASE_URL}/`);
@@ -39,98 +47,75 @@ export async function getHealthStatus() {
   }
 }
 
-// 3. Trigger Pipeline Podcast — POST /api/v1/podcast/generate?keyword=...&language=...&tone=...&voice=...
-// CATATAN: sebelumnya fungsi ini menerima (keyword, hostCount, languageStyle)
-// tapi backend endpoint-nya cuma menerima "keyword" -- jadi host_count dan
-// language_style yang dikirim selalu diabaikan diam-diam oleh FastAPI karena
-// tidak dideklarasikan di endpoint. Sekarang disamakan persis dengan
-// parameter yang benar-benar diterima backend: language, tone, voice.
-export async function generatePodcast(keyword, options = {}) {
+// POST /api/v1/podcast/generate?keyword=...
+// PENTING: endpoint ini SINKRON — response baru balik setelah SELURUH pipeline
+// (riset, naskah, audio) selesai. Bisa makan waktu cukup lama (30 detik - beberapa menit).
+// Tidak ada job_id/polling karena backend belum implementasi job queue.
+export async function generatePodcast(keyword) {
   if (!keyword || !keyword.trim()) {
     throw new Error("Keyword tidak boleh kosong");
   }
-
-  const {
-    language = "indonesian",
-    tone = "professional",
-    voice = "mixed",
-  } = options;
-
-  const params = new URLSearchParams({
-    keyword: keyword.trim(),
-    language,
-    tone,
-    voice,
-  });
-
-  const url = `${API_BASE_URL}/api/v1/podcast/generate?${params.toString()}`;
-
-  const res = await fetch(url, {
+  const params = new URLSearchParams({ keyword: keyword.trim() });
+  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/generate?${params.toString()}`, {
     method: "POST",
-    headers: {
-      "Accept": "application/json",
-    },
+    headers: { Accept: "application/json" },
   });
-
   return handleResponse(res, "Gagal memulai pipeline podcast");
 }
 
-// 4. Ambil Riwayat Podcast — GET /api/v1/podcast/history
+// GET /api/v1/podcast/history
 export async function getPodcastHistory() {
   try {
     const res = await fetch(`${API_BASE_URL}/api/v1/podcast/history`);
     return await handleResponse(res, "Gagal mengambil riwayat podcast");
   } catch (err) {
     console.error("getPodcastHistory Error:", err);
-    return [];
+    return { status: "error", total: 0, data: [] };
   }
 }
 
-// 5. Cek status job — GET /api/v1/podcast/status/{job_id}
-export async function getJobStatus(jobId) {
-  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/status/${jobId}`);
-  return handleResponse(res, "Gagal mengambil status job");
-}
-
-export const getAudioDownloadUrl = (filename) => {
-  if (!filename) return "";
-  // Jika filename sudah berupa URL lengkap atau path berlebih, bersihkan terlebih dahulu
-  const cleanName = filename.replace(/^.*[\\\/]/, '').replace(/^\/api\/v1\/podcast\/download\//, '');
-  const baseUrl = "https://voxflow-backend-production.up.railway.app/api/v1/podcast";
-  return `${baseUrl}/download/${cleanName}`;
-};
-
-export const getVideoStreamUrl = (filename) => {
-  if (!filename) return "";
-  // Bersihkan filename dari duplikasi path jika ada
-  const cleanName = filename.replace(/^.*[\\\/]/, '').replace(/^\/api\/v1\/podcast\/video\//, '');
-  const baseUrl = "https://voxflow-backend-production.up.railway.app/api/v1/podcast";
-  return `${baseUrl}/video/${cleanName}`;
-};
-
-// 8. Merge Audio manual — POST /api/v1/podcast/merge-audio/{id}
-export async function mergeAudio(id) {
-  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/merge-audio/${id}`, {
+// POST /api/v1/podcast/merge-audio/{database_id}
+export async function mergeAudio(databaseId) {
+  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/merge-audio/${databaseId}`, {
     method: "POST",
   });
   return handleResponse(res, "Gagal menggabungkan audio");
 }
 
-// 9. Generate Video manual — POST /api/v1/podcast/generate-video/{id}
-export async function generateVideo(id) {
-  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/generate-video/${id}`, {
+// POST /api/v1/podcast/generate-video/{database_id}
+export async function generateVideo(databaseId) {
+  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/generate-video/${databaseId}`, {
     method: "POST",
   });
   return handleResponse(res, "Gagal merender video");
 }
 
-// 10. Publish / retry publish ke TikTok — POST /api/v1/podcast/publish-tiktok/{id}
-// Upload TikTok normalnya jalan OTOMATIS di backend setelah pipeline selesai.
-// Fungsi ini dipakai untuk retry manual kalau auto-publish gagal, tanpa perlu
-// generate ulang dari awal.
-export async function publishToTikTok(id) {
-  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/publish-tiktok/${id}`, {
+// GET /api/v1/podcast/download/{filename}
+export function getAudioDownloadUrl(filename) {
+  const cleanName = extractCleanFilename(filename);
+  if (!cleanName) return "";
+  return `${API_BASE_URL}/api/v1/podcast/download/${cleanName}`;
+}
+
+// GET /api/v1/podcast/video/{video_filename}
+export function getVideoStreamUrl(filename) {
+  const cleanName = extractCleanFilename(filename);
+  if (!cleanName) return "";
+  return `${API_BASE_URL}/api/v1/podcast/video/${cleanName}`;
+}
+
+// POST /api/v1/podcast/upload-tiktok
+export async function uploadToTikTok({ videoFilename, title, description, tags, cta }) {
+  const res = await fetch(`${API_BASE_URL}/api/v1/podcast/upload-tiktok`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      video_filename: videoFilename,
+      title,
+      description,
+      tags: tags || [],
+      cta: cta || "Jangan lupa follow!",
+    }),
   });
-  return handleResponse(res, "Gagal publish ke TikTok");
+  return handleResponse(res, "Gagal upload ke TikTok");
 }
