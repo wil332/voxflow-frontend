@@ -92,23 +92,21 @@ export async function getJobStatus(jobId) {
   return handleResponse(res, "Gagal mengambil status job");
 }
 
-// 6. Helper URL Audio — GET /api/v1/podcast/download/{filename}
-export function getAudioDownloadUrl(filename) {
+export const getAudioDownloadUrl = (filename) => {
   if (!filename) return "";
-  if (filename.startsWith("http://") || filename.startsWith("https://")) {
-    return filename;
-  }
-  return `${API_BASE_URL}/api/v1/podcast/download/${encodeURIComponent(filename)}`;
-}
+  // Jika filename sudah berupa URL lengkap atau path berlebih, bersihkan terlebih dahulu
+  const cleanName = filename.replace(/^.*[\\\/]/, '').replace(/^\/api\/v1\/podcast\/download\//, '');
+  const baseUrl = "https://voxflow-backend-production.up.railway.app/api/v1/podcast";
+  return `${baseUrl}/download/${cleanName}`;
+};
 
-// 7. Helper URL Video — GET /api/v1/podcast/video/{video_filename}
-export function getVideoStreamUrl(videoFilename) {
-  if (!videoFilename) return "";
-  if (videoFilename.startsWith("http://") || videoFilename.startsWith("https://")) {
-    return videoFilename;
-  }
-  return `${API_BASE_URL}/api/v1/podcast/video/${encodeURIComponent(videoFilename)}`;
-}
+export const getVideoStreamUrl = (filename) => {
+  if (!filename) return "";
+  // Bersihkan filename dari duplikasi path jika ada
+  const cleanName = filename.replace(/^.*[\\\/]/, '').replace(/^\/api\/v1\/podcast\/video\//, '');
+  const baseUrl = "https://voxflow-backend-production.up.railway.app/api/v1/podcast";
+  return `${baseUrl}/video/${cleanName}`;
+};
 
 // 8. Merge Audio manual — POST /api/v1/podcast/merge-audio/{id}
 export async function mergeAudio(id) {
