@@ -39,32 +39,29 @@ export async function getHealthStatus() {
   }
 }
 
-// 3. Trigger Pipeline Podcast — POST /api/v1/podcast/generate?keyword=...
-export async function generatePodcast({
-  keyword,
-  hostCount = 2,
-  language = "id",
-  tone = "professional",
-  voice = "mixed",
-  duration = "5-10",
-  platforms = [],
-}) {
+// 3. Trigger Pipeline Podcast — POST /api/v1/podcast/generate?keyword=...&language=...&tone=...&voice=...
+// CATATAN: sebelumnya fungsi ini menerima (keyword, hostCount, languageStyle)
+// tapi backend endpoint-nya cuma menerima "keyword" -- jadi host_count dan
+// language_style yang dikirim selalu diabaikan diam-diam oleh FastAPI karena
+// tidak dideklarasikan di endpoint. Sekarang disamakan persis dengan
+// parameter yang benar-benar diterima backend: language, tone, voice.
+export async function generatePodcast(keyword, options = {}) {
   if (!keyword || !keyword.trim()) {
     throw new Error("Keyword tidak boleh kosong");
   }
 
-  const params = new URLSearchParams();
+  const {
+    language = "indonesian",
+    tone = "professional",
+    voice = "mixed",
+  } = options;
 
-params.append("keyword", keyword.trim());
-params.append("host_count", hostCount);
-params.append("language", language);
-params.append("tone", tone);
-params.append("voice", voice);
-params.append("duration", duration);
-
-platforms.forEach(p =>
-    params.append("platforms", p)
-);
+  const params = new URLSearchParams({
+    keyword: keyword.trim(),
+    language,
+    tone,
+    voice,
+  });
 
   const url = `${API_BASE_URL}/api/v1/podcast/generate?${params.toString()}`;
 

@@ -279,45 +279,28 @@ export function PipelineProvider({ children }) {
     }, 2000);
   }, [pollJobStatus, stopPolling, resetAgents]);
 
-  const triggerGenerate = useCallback(async (payload) => {
-    console.log("[TRIGGER] 🚀 Generate:", payload);
-
+  const triggerGenerate = useCallback(async (keyword, options = {}) => {
+    console.log("[TRIGGER] 🚀 Generating for keyword:", keyword, "options:", options);
     setIsLoading(true);
     resetAgents();
 
     try {
-
-        const result = await generatePodcast(payload);
-
-        if (!result.job_id) {
-            throw new Error("Tidak ada job_id dari backend");
-        }
-
+      const result = await generatePodcast(keyword, options);
+      if (result.job_id) {
         startPolling(result.job_id);
-
         return result;
-
+      } else {
+        throw new Error("Tidak ada job_id dari backend");
+      }
     } catch (error) {
-
-        console.error("[TRIGGER]", error);
-
-        setAgentsState(prev =>
-            prev.map(agent =>
-                agent.status === "processing"
-                    ? { ...agent, status: "error", progress: 0 }
-                    : agent
-            )
-        );
-
-        throw error;
-
-    } finally {
-
-        setIsLoading(false);
-
+      console.error("[TRIGGER] ❌ Error:", error);
+      setIsLoading(false);
+      setAgentsState(prev => prev.map(a =>
+        a.status === "processing" ? { ...a, status: "error", progress: 0 } : a
+      ));
+      throw error;
     }
-
-}, [startPolling, resetAgents]);
+  }, [startPolling, resetAgents]);
 
   const handleMergeAudio = useCallback(async (id) => {
     try {
@@ -369,14 +352,7 @@ export function PipelineProvider({ children }) {
   const handleRetry = useCallback(async (id, keyword) => {
     try {
       setIsLoading(true);
-      const result = await generatePodcast({
-    keyword,
-    language: "indonesian",
-    tone: "professional",
-    voice: "mixed",
-    duration: "5-10",
-    platforms: ["spotify"]
-});
+      const result = await generatePodcast(keyword);
       if (result.job_id) {
         startPolling(result.job_id);
       }

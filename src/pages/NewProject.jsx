@@ -18,17 +18,10 @@ export default function NewProject() {
   const { triggerGenerate, isLoading } = usePipeline();
   const navigate = useNavigate();
 
-
-  // ============================================================
-  // DEBUG: Pantau perubahan isLoading
-  // ============================================================
   useEffect(() => {
     console.log("[NEWPROJECT] Loading state:", isLoading);
   }, [isLoading]);
 
-  // ============================================================
-  // DEBUG: Pantau perubahan keyword
-  // ============================================================
   useEffect(() => {
     console.log("[NEWPROJECT] Keyword:", keyword);
   }, [keyword]);
@@ -36,7 +29,6 @@ export default function NewProject() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validasi keyword
     const validationError = validateTopic(keyword);
     if (validationError) {
       setError(validationError);
@@ -46,18 +38,14 @@ export default function NewProject() {
     setIsSubmitting(true);
 
     try {
-      // Panggil API generate
-      const result = await triggerGenerate({
-    keyword,
-    language,
-    tone,
-    voice,
-    duration,
-    platforms: platform
-});
+      // CATATAN: sebelumnya di sini cuma triggerGenerate(keyword) --
+      // language/tone/voice yang sudah dipilih user di form ini TIDAK
+      // pernah dikirim ke backend, jadi pipeline selalu jalan dengan
+      // default (indonesian/professional/mixed) apapun yang dipilih.
+      // Sekarang diteruskan sebagai options.
+      const result = await triggerGenerate(keyword, { language, tone, voice });
       console.log("[NewProject] Generate result:", result);
 
-      // Navigasi ke Dashboard dengan state
       navigate("/dashboard", {
         state: {
           jobStarted: true,
@@ -74,24 +62,20 @@ export default function NewProject() {
     }
   };
 
-  // Real-time validation on change
   const handleKeywordChange = (e) => {
     const value = e.target.value;
     setKeyword(value);
-    // Hapus error saat user mengetik
     if (error) {
       const validation = validateTopic(value);
       if (!validation) setError(null);
     }
   };
 
-  // Validation on blur
   const handleKeywordBlur = () => {
     const validationError = validateTopic(keyword);
     setError(validationError);
   };
 
-  // Toggle platform selection
   const togglePlatform = (plat) => {
     setPlatform(prev =>
       prev.includes(plat) ? prev.filter(p => p !== plat) : [...prev, plat]
@@ -101,7 +85,6 @@ export default function NewProject() {
   return (
     <DashboardLayout title="New Project" breadcrumb="Generative Pipeline">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Utama */}
         <GlassPanel className="lg:col-span-2 p-6">
           <div className="flex items-center gap-2 mb-2">
             <span className="material-symbols-outlined text-indigo-400 text-2xl">auto_awesome</span>
@@ -112,9 +95,7 @@ export default function NewProject() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Row 1: Title & Topic */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Title */}
               <div>
                 <label className="block text-sm text-zinc-400 mb-1.5">
                   Podcast Title
@@ -128,7 +109,6 @@ export default function NewProject() {
                 />
               </div>
 
-              {/* Topic (Wajib) */}
               <div>
                 <label className="block text-sm text-zinc-400 mb-1.5">
                   Topic <span className="text-fuchsia-400">*</span>
@@ -155,9 +135,7 @@ export default function NewProject() {
               </div>
             </div>
 
-            {/* Row 2: Language, Tone, Voice */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Language */}
               <div>
                 <label className="block text-sm text-zinc-400 mb-1.5">Language</label>
                 <select
@@ -167,12 +145,12 @@ export default function NewProject() {
                 >
                   <option value="indonesian">🇮🇩 Indonesian</option>
                   <option value="english">🇬🇧 English</option>
-                  <option value="sunda">🌾 Sunda</option>
-                  <option value="jawa">🌾 Jawa</option>
                 </select>
+                <p className="text-[10px] text-zinc-500 mt-1">
+                  Naskah & narasi akan dibuat dalam bahasa ini
+                </p>
               </div>
 
-              {/* Tone */}
               <div>
                 <label className="block text-sm text-zinc-400 mb-1.5">Tone</label>
                 <select
@@ -188,7 +166,6 @@ export default function NewProject() {
                 </select>
               </div>
 
-              {/* Voice */}
               <div>
                 <label className="block text-sm text-zinc-400 mb-1.5">Voice</label>
                 <select
@@ -203,9 +180,7 @@ export default function NewProject() {
               </div>
             </div>
 
-            {/* Row 3: Duration & Platform */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Duration */}
               <div>
                 <label className="block text-sm text-zinc-400 mb-1.5">Duration</label>
                 <select
@@ -218,9 +193,11 @@ export default function NewProject() {
                   <option value="10-15">⏱️ 10-15 minutes</option>
                   <option value="15-20">⏱️ 15-20 minutes</option>
                 </select>
+                <p className="text-[10px] text-amber-400 mt-1">
+                  ⚠️ Belum dikirim ke backend (belum ada parameter durasi di pipeline)
+                </p>
               </div>
 
-              {/* Platform */}
               <div>
                 <label className="block text-sm text-zinc-400 mb-1.5">Platform</label>
                 <div className="flex gap-2 flex-wrap">
@@ -245,7 +222,6 @@ export default function NewProject() {
               </div>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading || isSubmitting || !keyword.trim()}
@@ -265,21 +241,17 @@ export default function NewProject() {
             </button>
 
             <div className="flex items-center gap-4 text-[10px] text-zinc-500 justify-center">
-              <span>⚡ AI Research → Script → Audio → Video</span>
+              <span>⚡ AI Research → Script → Audio → Video → TikTok</span>
               <span className="w-px h-3 bg-white/10" />
               <span>⏱️ ~1-3 minutes</span>
-              <span className="w-px h-3 bg-white/10" />
-              <span>🎯 Multi-platform ready</span>
             </div>
           </form>
         </GlassPanel>
 
-        {/* Info Sidebar */}
         <GlassPanel className="p-6">
           <h3 className="text-lg font-semibold mb-4 text-white">💡 Quick Guide</h3>
 
           <div className="space-y-4 text-sm">
-            {/* Tip 1 */}
             <div className="p-3 bg-slate-900/50 rounded-xl border border-white/5">
               <p className="text-zinc-400 font-semibold flex items-center gap-2">
                 <span>📝</span> Best Topic
@@ -289,7 +261,15 @@ export default function NewProject() {
               </p>
             </div>
 
-            {/* Tip 2 */}
+            <div className="p-3 bg-slate-900/50 rounded-xl border border-white/5">
+              <p className="text-zinc-400 font-semibold flex items-center gap-2">
+                <span>🌐</span> Language
+              </p>
+              <p className="text-zinc-500 text-xs mt-1">
+                Naskah, narasi, dan tone percakapan mengikuti bahasa yang dipilih di sini.
+              </p>
+            </div>
+
             <div className="p-3 bg-slate-900/50 rounded-xl border border-white/5">
               <p className="text-zinc-400 font-semibold flex items-center gap-2">
                 <span>🎤</span> Voice Selection
@@ -299,29 +279,17 @@ export default function NewProject() {
               </p>
             </div>
 
-            {/* Tip 3 */}
-            <div className="p-3 bg-slate-900/50 rounded-xl border border-white/5">
-              <p className="text-zinc-400 font-semibold flex items-center gap-2">
-                <span>📱</span> Platform Support
-              </p>
-              <p className="text-zinc-500 text-xs mt-1">
-                Metadata dioptimalkan untuk SEO di setiap platform yang dipilih.
-              </p>
-            </div>
-
-            {/* Note */}
             <div className="p-3 bg-amber-950/20 rounded-xl border border-amber-500/20">
               <p className="text-amber-400 font-semibold flex items-center gap-2">
                 <span>⚡</span> Note
               </p>
               <p className="text-zinc-400 text-xs mt-1">
-                Parameter tambahan (voice, duration, platform) akan diaktifkan sepenuhnya di update berikutnya.
-                Saat ini semua parameter dikirim dengan value default ke backend.
+                Duration & Platform belum tersambung ke backend -- akan diaktifkan
+                di update berikutnya. Language, Tone, dan Voice sudah aktif penuh.
               </p>
             </div>
           </div>
 
-          {/* Quick Stats */}
           <div className="mt-6 pt-4 border-t border-white/10">
             <p className="text-xs text-zinc-500">Pipeline Summary</p>
             <div className="grid grid-cols-2 gap-2 mt-2">
@@ -338,8 +306,8 @@ export default function NewProject() {
                 <p className="text-xs text-zinc-300">ElevenLabs</p>
               </div>
               <div className="bg-slate-900/50 p-2 rounded-lg">
-                <p className="text-[10px] text-zinc-500">Video</p>
-                <p className="text-xs text-zinc-300">FFmpeg</p>
+                <p className="text-[10px] text-zinc-500">TikTok</p>
+                <p className="text-xs text-zinc-300">Auto-Publish</p>
               </div>
             </div>
           </div>
