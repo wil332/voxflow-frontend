@@ -1,3 +1,5 @@
+// src/services/api.js
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://voxflow-backend-production.up.railway.app";
 
 async function handleResponse(res, errorMessage) {
@@ -14,7 +16,6 @@ async function handleResponse(res, errorMessage) {
   return res.json();
 }
 
-// Bersihkan filename dari path/encoding berlebih, apapun format yang dikirim backend
 function extractCleanFilename(raw) {
   if (!raw) return "";
   let value = raw;
@@ -47,10 +48,7 @@ export async function getHealthStatus() {
   }
 }
 
-// POST /api/v1/podcast/generate?keyword=...
-// PENTING: endpoint ini SINKRON — response baru balik setelah SELURUH pipeline
-// (riset, naskah, audio) selesai. Bisa makan waktu cukup lama (30 detik - beberapa menit).
-// Tidak ada job_id/polling karena backend belum implementasi job queue.
+// POST /api/v1/podcast/generate
 export async function generatePodcast(keyword) {
   if (!keyword || !keyword.trim()) {
     throw new Error("Keyword tidak boleh kosong");
@@ -74,7 +72,7 @@ export async function getPodcastHistory() {
   }
 }
 
-// POST /api/v1/podcast/merge-audio/{database_id}
+// POST /api/v1/podcast/merge-audio
 export async function mergeAudio(databaseId) {
   const res = await fetch(`${API_BASE_URL}/api/v1/podcast/merge-audio/${databaseId}`, {
     method: "POST",
@@ -82,7 +80,7 @@ export async function mergeAudio(databaseId) {
   return handleResponse(res, "Gagal menggabungkan audio");
 }
 
-// POST /api/v1/podcast/generate-video/{database_id}
+// POST /api/v1/podcast/generate-video
 export async function generateVideo(databaseId) {
   const res = await fetch(`${API_BASE_URL}/api/v1/podcast/generate-video/${databaseId}`, {
     method: "POST",
