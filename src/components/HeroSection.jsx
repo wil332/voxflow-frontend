@@ -30,18 +30,13 @@ export default function HeroSection({
 
         <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-10">{subheadline}</p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex items-center justify-center">
           <Link
             to="/dashboard"
             className="w-full sm:w-auto px-8 py-4 bg-indigo-400 text-white text-lg rounded-xl font-bold shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
           >
             Go to Dashboard <span className="material-symbols-outlined">arrow_forward</span>
           </Link>
-          <GlassPanel className="w-full sm:w-auto">
-            <button className="w-full px-8 py-4 text-lg hover:bg-white/10 transition-all rounded-3xl">
-              Watch Demo
-            </button>
-          </GlassPanel>
         </div>
 
         <GlassPanel className="hero-mockup mt-20 p-4 md:p-8 max-w-4xl mx-auto">

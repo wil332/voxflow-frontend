@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import GlassPanel from "../components/GlassPanel";
@@ -7,24 +7,13 @@ import { validateTopic } from "../utils/validation";
 
 export default function NewProject() {
   const [keyword, setKeyword] = useState("");
-  const [title, setTitle] = useState("");
   const [language, setLanguage] = useState("indonesian");
   const [tone, setTone] = useState("professional");
   const [voice, setVoice] = useState("mixed");
-  const [duration, setDuration] = useState("5-10");
-  const [platform, setPlatform] = useState(["spotify"]);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { triggerGenerate, isLoading } = usePipeline();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    console.log("[NEWPROJECT] Loading state:", isLoading);
-  }, [isLoading]);
-
-  useEffect(() => {
-    console.log("[NEWPROJECT] Keyword:", keyword);
-  }, [keyword]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,13 +27,7 @@ export default function NewProject() {
     setIsSubmitting(true);
 
     try {
-      // CATATAN: sebelumnya di sini cuma triggerGenerate(keyword) --
-      // language/tone/voice yang sudah dipilih user di form ini TIDAK
-      // pernah dikirim ke backend, jadi pipeline selalu jalan dengan
-      // default (indonesian/professional/mixed) apapun yang dipilih.
-      // Sekarang diteruskan sebagai options.
       const result = await triggerGenerate(keyword, { language, tone, voice });
-      console.log("[NewProject] Generate result:", result);
 
       navigate("/dashboard", {
         state: {
@@ -54,7 +37,6 @@ export default function NewProject() {
         }
       });
     } catch (err) {
-      console.error("[NewProject] Error:", err);
       alert("❌ Gagal memproses podcast: " + (err.message || "Unknown error"));
       setError(err.message || "Gagal memulai pipeline");
     } finally {
@@ -76,12 +58,6 @@ export default function NewProject() {
     setError(validationError);
   };
 
-  const togglePlatform = (plat) => {
-    setPlatform(prev =>
-      prev.includes(plat) ? prev.filter(p => p !== plat) : [...prev, plat]
-    );
-  };
-
   return (
     <DashboardLayout title="New Project" breadcrumb="Generative Pipeline">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -95,44 +71,29 @@ export default function NewProject() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1.5">
-                  Podcast Title
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Masukkan judul podcast..."
-                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1.5">
-                  Topic <span className="text-fuchsia-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={keyword}
-                  onChange={handleKeywordChange}
-                  onBlur={handleKeywordBlur}
-                  placeholder="misal: AI Inovasi Kesehatan 2026"
-                  className={`w-full bg-slate-900 border rounded-xl px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 transition ${
-                    error ? "border-fuchsia-400/60" : "border-white/10"
-                  }`}
-                />
-                {error && (
-                  <p className="text-fuchsia-400 text-xs mt-1.5 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">error</span>
-                    {error}
-                  </p>
-                )}
-                <p className="text-[10px] text-zinc-500 mt-1">
-                  Minimal 5 karakter, maksimal 120 karakter
+            <div>
+              <label className="block text-sm text-zinc-400 mb-1.5">
+                Topic <span className="text-fuchsia-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={keyword}
+                onChange={handleKeywordChange}
+                onBlur={handleKeywordBlur}
+                placeholder="misal: AI Inovasi Kesehatan 2026"
+                className={`w-full bg-slate-900 border rounded-xl px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 transition ${
+                  error ? "border-fuchsia-400/60" : "border-white/10"
+                }`}
+              />
+              {error && (
+                <p className="text-fuchsia-400 text-xs mt-1.5 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">error</span>
+                  {error}
                 </p>
-              </div>
+              )}
+              <p className="text-[10px] text-zinc-500 mt-1">
+                Minimal 5 karakter, maksimal 120 karakter
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -177,46 +138,6 @@ export default function NewProject() {
                   <option value="female">👩 Female (Richel)</option>
                   <option value="mixed">👫 Mixed (Budi & Richel)</option>
                 </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1.5">Duration</label>
-                <select
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition"
-                >
-                  <option value="3-5">⏱️ 3-5 minutes</option>
-                  <option value="5-10">⏱️ 5-10 minutes</option>
-                  <option value="10-15">⏱️ 10-15 minutes</option>
-                  <option value="15-20">⏱️ 15-20 minutes</option>
-                </select>
-
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-1.5">Platform</label>
-                <div className="flex gap-2 flex-wrap">
-                  {["spotify", "youtube", "tiktok", "apple"].map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => togglePlatform(p)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        platform.includes(p)
-                          ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
-                          : "bg-white/5 text-zinc-500 border border-white/10 hover:bg-white/10"
-                      }`}
-                    >
-                      {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-zinc-500 mt-1">
-                  {platform.length} platform selected
-                </p>
               </div>
             </div>
 
@@ -274,16 +195,6 @@ export default function NewProject() {
               </p>
               <p className="text-zinc-500 text-xs mt-1">
                 Pilih "Mixed" untuk dialog dua host (Budi & Richel) yang lebih natural.
-              </p>
-            </div>
-
-            <div className="p-3 bg-amber-950/20 rounded-xl border border-amber-500/20">
-              <p className="text-amber-400 font-semibold flex items-center gap-2">
-                <span>⚡</span> Note
-              </p>
-              <p className="text-zinc-400 text-xs mt-1">
-                Duration & Platform belum tersambung ke backend -- akan diaktifkan
-                di update berikutnya. Language, Tone, dan Voice sudah aktif penuh.
               </p>
             </div>
           </div>
