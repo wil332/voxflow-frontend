@@ -1,5 +1,3 @@
-// src/context/PipelineProvider.jsx
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { PipelineContext } from "./PipelineContext";
 import {
@@ -11,14 +9,15 @@ import {
   getVideoStreamUrl,
   mergeAudio,
   generateVideo,
-  uploadToTikTok
+  publishToTikTok
 } from "../services/api";
 
 // ============================================================
-// NORMALISASI STATUS AGENT
+// NORMALISASI STATUS AGENT DARI BACKEND
 // ============================================================
 function normalizeAgentStatus(rawStatus) {
   const s = String(rawStatus || "").trim().toLowerCase();
+
   if (["running", "processing", "in_progress", "active", "started", "uploading"].includes(s)) {
     return "processing";
   }
@@ -31,12 +30,16 @@ function normalizeAgentStatus(rawStatus) {
   return "idle";
 }
 
+// Key "metadata" (SEO metadata agent) dan "tiktok" (upload/publish) DIPISAH.
+// Sebelumnya keduanya dipetakan ke key "metadata" yang sama, jadi kartu
+// "TikTok Publisher" di UI sebenarnya cuma menampilkan status metadata agent,
+// bukan status publish TikTok yang sebenarnya.
 const AGENT_KEY_CANDIDATES = {
   research: ["research", "research_agent", "researcher"],
-  script: ["script", "script_agent", "scriptwriter", "dialogue"],
+  script: ["script", "script_agent", "scriptwriter", "dialogue", "dialogue_agent"],
   audio: ["audio", "audio_agent", "audio_engine"],
   metadata: ["metadata", "metadata_agent", "seo"],
-  tiktok: ["tiktok", "tiktok_agent", "publisher", "distribution"],
+  tiktok: ["tiktok", "tiktok_agent", "publisher", "distribution", "publish"],
 };
 
 function getRawAgentStatus(agentStatusObj, agentKey) {
@@ -79,30 +82,22 @@ export function PipelineProvider({ children }) {
     return data.length > 0 ? data[data.length - 1] : null;
   }, [history]);
 
-  const getQueue = useCallback(() => {
-    const data = Array.isArray(history) ? history : [];
-    return data.filter(item => item.status === "processing" || item.status === "pending");
-  }, [history]);
-
-  const getStatistics = useCallback(() => {
-    const data = Array.isArray(history) ? history : [];
-    const total = data.length;
-    const published = data.filter(item => item.tiktok_status === "success").length;
-    const failed = data.filter(item => item.status === "failed").length;
-    const queue = data.filter(item => item.status === "processing" || item.status === "pending").length;
-    const successRate = total > 0 ? Math.round(((total - failed) / total) * 100) : 0;
-    return { total, published, failed, queue, successRate };
-  }, [history]);
-
   const forceUpdateAgents = useCallback(() => {
     console.log("[FORCE UPDATE] 🔄 Force updating agents from history...");
     const latest = getLatestEpisode();
+
     if (latest) {
       if (latest.status === "completed") {
         setAgentsState(prev => {
           const allCompleted = prev.every(a => a.status === "completed" && a.progress === 100);
           if (allCompleted) return prev;
-          return prev.map(agent => ({ ...agent, status: "completed", progress: 100 }));
+          const newState = prev.map(agent => ({
+            ...agent,
+            status: "completed",
+            progress: 100
+          }));
+          console.log("[FORCE UPDATE] ✅ All agents set to COMPLETED");
+          return newState;
         });
       } else if (latest.status === "processing") {
         setAgentsState(prev => {
@@ -112,9 +107,12 @@ export function PipelineProvider({ children }) {
             newState[0].status = "processing";
             newState[0].progress = 30;
           }
+          console.log("[FORCE UPDATE] ⏳ Research agent set to PROCESSING");
           return newState;
         });
       }
+    } else {
+      console.log("[FORCE UPDATE] ℹ️ No episode found");
     }
   }, [getLatestEpisode]);
 
@@ -123,6 +121,28 @@ export function PipelineProvider({ children }) {
       const data = await getPodcastHistory();
       const historyData = data?.data || [];
       setHistory(historyData);
+
+      if (historyData.length > 0) {
+        const latest = historyData[historyData.length - 1];
+        if (latest.status === "completed") {
+          setAgentsState(prev => {
+            const newState = prev.map(agent => ({ ...agent, status: "completed", progress: 100 }));
+            setUpdateCounter(prev => prev + 1);
+            return newState;
+          });
+        } else if (latest.status === "processing") {
+          setAgentsState(prev => {
+            const newState = [...prev];
+            if (newState[0]) {
+              newState[0].status = "processing";
+              newState[0].progress = 30;
+            }
+            setUpdateCounter(prev => prev + 1);
+            return newState;
+          });
+        }
+      }
+
       return historyData;
     } catch (err) {
       console.error("Gagal mengambil history:", err);
@@ -151,6 +171,7 @@ export function PipelineProvider({ children }) {
   const pollJobStatus = useCallback(async (jobId) => {
     try {
       const status = await getJobStatus(jobId);
+
       console.log("[POLLING] 📡 Status received:", {
         jobId: status.id,
         status: status.status,
@@ -163,17 +184,23 @@ export function PipelineProvider({ children }) {
 
       if (status.agent_status) {
         setAgentsState(prev => {
-          return prev.map(agent => {
+          const newState = prev.map(agent => {
             const rawStatus = getRawAgentStatus(status.agent_status, agent.key);
             const newStatus = normalizeAgentStatus(rawStatus);
+
             let progress = 0;
             if (newStatus === "processing") progress = status.progress || 50;
             else if (newStatus === "completed") progress = 100;
+
             return { ...agent, status: newStatus, progress };
           });
+          return newState;
         });
       }
 
+      // Selalu simpan status/url/error TikTok terbaru ke currentJob,
+      // bukan hanya saat job sudah "completed" -- supaya UI bisa
+      // menampilkan "uploading..." secara real-time.
       setCurrentJob(prev => ({
         ...prev,
         id: jobId,
@@ -185,15 +212,37 @@ export function PipelineProvider({ children }) {
 
       if (status.status === "completed") {
         console.log("[POLLING] ✅ Pipeline completed! 🎉");
-        setAgentsState(prev => prev.map(agent => ({ ...agent, status: "completed", progress: 100 })));
-        setCurrentJob(null);
+
+        setAgentsState(prev => {
+          const newState = prev.map(agent => ({ ...agent, status: "completed", progress: 100 }));
+          setUpdateCounter(prev => prev + 1);
+          return newState;
+        });
+
         stopPolling();
         setIsLoading(false);
         await fetchHistory();
-        forceUpdateAgents();
+
+        setCurrentJob(prev => ({
+          ...prev,
+          status: "completed",
+          videoUrl: status.video_url || null,
+          audioUrl: status.audio_url || null,
+          metadata: status.metadata || null,
+          tiktokStatus: status.tiktok_status,
+          tiktokUrl: status.tiktok_url,
+          tiktokError: status.tiktok_error,
+        }));
+
       } else if (status.status === "failed") {
         console.log("[POLLING] ❌ Pipeline failed!");
-        setAgentsState(prev => prev.map(agent => ({ ...agent, status: "error", progress: 0 })));
+
+        setAgentsState(prev => {
+          const newState = prev.map(agent => ({ ...agent, status: "error", progress: 0 }));
+          setUpdateCounter(prev => prev + 1);
+          return newState;
+        });
+
         stopPolling();
         setIsLoading(false);
         setCurrentJob(prev => ({ ...prev, status: "failed", error: status.error_message }));
@@ -204,10 +253,11 @@ export function PipelineProvider({ children }) {
       console.error("[POLLING] ❌ Error:", error);
       return null;
     }
-  }, [fetchHistory, stopPolling, forceUpdateAgents]);
+  }, [fetchHistory, stopPolling]);
 
   const startPolling = useCallback((jobId) => {
     console.log("[START POLLING] 🚀 Starting for job:", jobId);
+
     stopPolling();
     setCurrentJob({ id: jobId, status: "processing" });
     resetAgents();
@@ -219,6 +269,7 @@ export function PipelineProvider({ children }) {
           newState[0].status = "processing";
           newState[0].progress = 10;
         }
+        setUpdateCounter(prev => prev + 1);
         return newState;
       });
     }, 100);
@@ -228,13 +279,13 @@ export function PipelineProvider({ children }) {
     }, 2000);
   }, [pollJobStatus, stopPolling, resetAgents]);
 
-  const triggerGenerate = useCallback(async (keyword) => {
-    console.log("[TRIGGER] 🚀 Generating for keyword:", keyword);
+  const triggerGenerate = useCallback(async (keyword, options = {}) => {
+    console.log("[TRIGGER] 🚀 Generating for keyword:", keyword, "options:", options);
     setIsLoading(true);
     resetAgents();
 
     try {
-      const result = await generatePodcast(keyword);
+      const result = await generatePodcast(keyword, options);
       if (result.job_id) {
         startPolling(result.job_id);
         return result;
@@ -251,38 +302,146 @@ export function PipelineProvider({ children }) {
     }
   }, [startPolling, resetAgents]);
 
+  // ============================================================
+  // POLL HELPER -- dipakai handleMergeAudio & handleGenerateVideo supaya
+  // endpoint yang sekarang ASYNC (backend langsung balas "queued" via
+  // Celery) tetap terasa seperti fungsi biasa yang "selesai baru resolve"
+  // dari sudut pandang komponen React yang memanggilnya (AudioEngine.jsx
+  // tidak perlu diubah sama sekali).
+  // ============================================================
+  const pollUntilField = useCallback(async (jobId, fieldName, { intervalMs = 2500, timeoutMs = 240000 } = {}) => {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      const freshHistory = await fetchHistory();
+      const item = freshHistory.find((h) => h.id === jobId);
+      if (item && item[fieldName]) {
+        return item;
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    throw new Error(`Timeout menunggu ${fieldName} untuk job ${jobId} (lebih dari ${Math.round(timeoutMs / 1000)}s)`);
+  }, [fetchHistory]);
+
   const handleMergeAudio = useCallback(async (id) => {
     try {
-      const result = await mergeAudio(id);
-      await fetchHistory();
-      return result;
+      await mergeAudio(id); // backend cuma balas "queued" (202), diproses Celery worker di background
+      const item = await pollUntilField(id, "merged_audio_filename");
+      return { status: "completed", merged_audio_filename: item.merged_audio_filename };
     } catch (error) {
       console.error("[MERGE ERROR]", error);
       throw error;
     }
-  }, [fetchHistory]);
+  }, [pollUntilField]);
 
   const handleGenerateVideo = useCallback(async (id) => {
     try {
-      const result = await generateVideo(id);
-      await fetchHistory();
-      return result;
+      await generateVideo(id); // backend cuma balas "queued" (202), diproses Celery worker di background
+      const item = await pollUntilField(id, "video_filename");
+      return { status: "completed", video_filename: item.video_filename };
     } catch (error) {
       console.error("[VIDEO ERROR]", error);
       throw error;
     }
-  }, [fetchHistory]);
+  }, [pollUntilField]);
 
-  const handlePublishToTikTok = useCallback(async (payload) => {
+  // ============================================================
+  // PUBLISH / RETRY PUBLISH KE TIKTOK
+  // ============================================================
+  // Upload TikTok normalnya sudah otomatis di backend setelah pipeline
+  // selesai. Fungsi ini dipakai untuk retry manual kalau auto-publish
+  // gagal (misal webhook TikTok sempat down).
+  const handlePublishToTikTok = useCallback(async (id) => {
     try {
-      const result = await uploadToTikTok(payload);
+      setCurrentJob(prev => ({ ...prev, tiktokStatus: "uploading" }));
+      await publishToTikTok(id); // backend cuma balas "queued" (202), diproses Celery worker di background
+
+      // Poll status pakai getJobStatus (bukan history) karena tiktok_status
+      // ada di response /status/{id}, bukan di /history.
+      const startedAt = Date.now();
+      const timeoutMs = 180000; // 3 menit -- upload TikTok via browser automation bisa agak lama
+      let finalStatus = null;
+
+      while (Date.now() - startedAt < timeoutMs) {
+        const status = await getJobStatus(id);
+        if (status.tiktok_status && status.tiktok_status !== "uploading") {
+          finalStatus = status;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
+
+      if (!finalStatus) {
+        throw new Error("Timeout menunggu hasil publish TikTok (lebih dari 3 menit)");
+      }
+
+      setCurrentJob(prev => ({
+        ...prev,
+        tiktokStatus: finalStatus.tiktok_status,
+        tiktokUrl: finalStatus.tiktok_url,
+        tiktokError: finalStatus.tiktok_error,
+      }));
       await fetchHistory();
-      return result;
+      return {
+        status: finalStatus.tiktok_status,
+        tiktok_url: finalStatus.tiktok_url,
+        error: finalStatus.tiktok_error,
+      };
     } catch (error) {
       console.error("[TIKTOK PUBLISH ERROR]", error);
+      setCurrentJob(prev => ({ ...prev, tiktokStatus: "failed", tiktokError: error.message }));
       throw error;
     }
   }, [fetchHistory]);
+
+  const handleRetry = useCallback(async (id, keyword) => {
+    try {
+      setIsLoading(true);
+      const result = await generatePodcast(keyword);
+      if (result.job_id) {
+        startPolling(result.job_id);
+      }
+      return result;
+    } catch (error) {
+      console.error("[RETRY ERROR]", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [startPolling]);
+
+  const getQueue = useCallback(() => {
+    const data = Array.isArray(history) ? history : [];
+    return data.filter(item => item.status === "processing" || item.status === "pending");
+  }, [history]);
+
+  const getStatistics = useCallback(() => {
+    const data = Array.isArray(history) ? history : [];
+    const total = data.length;
+    const published = data.filter(item => item.tiktok_status === "success").length;
+    const failed = data.filter(item => item.status === "failed").length;
+    const queue = data.filter(item => item.status === "processing" || item.status === "pending").length;
+    const successRate = total > 0 ? Math.round(((total - failed) / total) * 100) : 0;
+    return { total, published, failed, queue, successRate };
+  }, [history]);
+
+  useEffect(() => {
+    if (history.length > 0) {
+      const latest = history[history.length - 1];
+      if (latest.status === "completed") {
+        setAgentsState(prev => {
+          const newState = prev.map(agent => ({ ...agent, status: "completed", progress: 100 }));
+          setUpdateCounter(prev => prev + 1);
+          return newState;
+        });
+      }
+    }
+  }, [history]);
+
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   useEffect(() => {
     const init = async () => {
@@ -308,6 +467,7 @@ export function PipelineProvider({ children }) {
     handleMergeAudio,
     handleGenerateVideo,
     handlePublishToTikTok,
+    handleRetry,
     resetAgents,
     stopPolling,
     forceUpdateAgents,
