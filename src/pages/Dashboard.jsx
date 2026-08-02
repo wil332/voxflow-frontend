@@ -366,27 +366,18 @@ export default function Dashboard() {
       <section className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-white">📋 Generation History</h3>
-          <a
-            href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/api/v1/podcast/history`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-bold"
-          >
-            <span className="material-symbols-outlined text-sm">rss_feed</span>
-            View All
-          </a>
-          <a
-            href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/api/v1/podcast/rss`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-bold"
-          >
-            <span className="material-symbols-outlined text-sm">rss_feed</span>
-            RSS Feed
-          </a>
-        </div>
-        <EpisodesTable episodes={formattedEpisodes} showViewAll limit={5}  />
-      </section>
+
+              <a href={`${import.meta.env.VITE_API_BASE_URL || "https://voxflow-backend-production.up.railway.app"}/api/v1/podcast/rss`}
+      target="_blank"
+      rel="noreferrer"
+      className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-bold"
+    >
+      <span className="material-symbols-outlined text-sm">rss_feed</span>
+      RSS Feed
+    </a>
+  </div>
+  <EpisodesTable episodes={formattedEpisodes} showViewAll limit={5} />
+</section>
     </DashboardLayout>
   );
 }
