@@ -1,3 +1,5 @@
+// src/components/EpisodesTable.jsx
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import GlassPanel from "./GlassPanel";
@@ -17,8 +19,39 @@ const localStatusColor = {
 export default function EpisodesTable({ episodes = [], showViewAll = false, limit }) {
   const { handleRetry, isLoading, getVideoStreamUrl, fetchHistory } = usePipeline();
   const [deletingId, setDeletingId] = useState(null);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const visibleEpisodes = limit ? episodes.slice(0, limit) : episodes;
+
+  const handleDeleteAll = async () => {
+    const firstConfirm = window.confirm(
+      `⚠️ Hapus SEMUA ${episodes.length} episode? Ini akan menghapus seluruh riwayat, audio, dan video. Aksi ini TIDAK BISA DIBATALKAN.`
+    );
+    if (!firstConfirm) return;
+
+    const secondConfirm = window.confirm(
+      `Konfirmasi sekali lagi: kamu yakin ingin menghapus SEMUA data? Ketik OK untuk melanjutkan.`
+    );
+    if (!secondConfirm) return;
+
+    setIsDeletingAll(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/podcast/episodes/all`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Gagal menghapus semua episode");
+      }
+
+      await fetchHistory();
+    } catch (error) {
+      alert(`❌ Gagal menghapus semua: ${error.message}`);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
 
   // rawId dipakai buat panggil API (harus angka murni), ep.id boleh format tampilan "EP-001"
   const handleDelete = async (rawId, title) => {
@@ -51,6 +84,19 @@ export default function EpisodesTable({ episodes = [], showViewAll = false, limi
         <h3 className="text-xl font-semibold text-white">📋 Episode History</h3>
         <div className="flex items-center gap-4">
           <span className="text-xs text-zinc-400">{episodes.length} episode total</span>
+          {episodes.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              disabled={isDeletingAll}
+              className="text-xs text-fuchsia-400 hover:text-fuchsia-300 font-bold flex items-center gap-1 disabled:opacity-50"
+            >
+              {isDeletingAll ? (
+                <>⏳ Menghapus...</>
+              ) : (
+                <>🗑️ Delete All</>
+              )}
+            </button>
+          )}
           {showViewAll && (
             <Link
               to="/dashboard/history"
