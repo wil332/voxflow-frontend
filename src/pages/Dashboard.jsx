@@ -1,5 +1,3 @@
-// src/pages/Dashboard.jsx
-
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
@@ -81,6 +79,7 @@ export default function Dashboard() {
   // ============================================================
   const formattedEpisodes = safeHistory.map((item) => ({
     id: `EP-${String(item.id).padStart(3, '0')}`,
+    rawId: item.id,
     title: item.keyword || "Untitled",
     stage: item.status === "completed" ? "Completed" :
            item.status === "failed" ? "Failed" :
@@ -386,7 +385,7 @@ export default function Dashboard() {
             RSS Feed
           </a>
         </div>
-        <EpisodesTable episodes={formattedEpisodes} />
+        <EpisodesTable episodes={formattedEpisodes} showViewAll limit={5}  />
       </section>
     </DashboardLayout>
   );
