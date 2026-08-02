@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import { PipelineProvider } from "./context/PipelineProvider";
 import { AuthProvider } from "./context/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import History from "./pages/History";
 
 function App() {
   return (
@@ -43,6 +44,10 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/dashboard/history" element={
+              <ProtectedRoute>
+                  <History />
+                </ProtectedRoute>} />
             <Route
               path="/dashboard/new-project"
               element={

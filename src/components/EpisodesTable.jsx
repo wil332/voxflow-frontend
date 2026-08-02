@@ -1,8 +1,9 @@
-// src/components/EpisodesTable.jsx
-
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import GlassPanel from "./GlassPanel";
 import { usePipeline } from "../context/usePipeline";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://voxflow-backend-production.up.railway.app";
 
 const localStatusColor = {
   completed: "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20",
@@ -13,18 +14,21 @@ const localStatusColor = {
   idle: "bg-zinc-800 text-zinc-500 border border-zinc-700",
 };
 
-export default function EpisodesTable({ episodes = [] }) {
-  const { handleRetry, isLoading, getVideoStreamUrl } = usePipeline();
+export default function EpisodesTable({ episodes = [], showViewAll = false, limit }) {
+  const { handleRetry, isLoading, getVideoStreamUrl, fetchHistory } = usePipeline();
   const [deletingId, setDeletingId] = useState(null);
 
-  const handleDelete = async (id, title) => {
+  const visibleEpisodes = limit ? episodes.slice(0, limit) : episodes;
+
+  // rawId dipakai buat panggil API (harus angka murni), ep.id boleh format tampilan "EP-001"
+  const handleDelete = async (rawId, title) => {
     if (!window.confirm(`⚠️ Hapus episode "${title}"? Ini tidak bisa dibatalkan!`)) {
       return;
     }
 
-    setDeletingId(id);
+    setDeletingId(rawId);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "https://voxflow-backend-production.up.railway.app"}/api/v1/podcast/episode/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/podcast/episode/${rawId}`, {
         method: "DELETE",
       });
 
@@ -33,8 +37,7 @@ export default function EpisodesTable({ episodes = [] }) {
         throw new Error(error.detail || "Gagal menghapus");
       }
 
-      alert(`✅ Episode "${title}" berhasil dihapus!`);
-      window.location.reload();
+      await fetchHistory(); // refresh data tanpa reload penuh halaman
     } catch (error) {
       alert(`❌ Gagal menghapus: ${error.message}`);
     } finally {
@@ -46,9 +49,17 @@ export default function EpisodesTable({ episodes = [] }) {
     <GlassPanel className="p-6 overflow-x-auto">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-semibold text-white">📋 Episode History</h3>
-        <span className="text-xs text-zinc-400">
-          {episodes.length} episode total
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-zinc-400">{episodes.length} episode total</span>
+          {showViewAll && (
+            <Link
+              to="/dashboard/history"
+              className="text-xs text-indigo-400 hover:text-indigo-300 font-bold"
+            >
+              View All
+            </Link>
+          )}
+        </div>
       </div>
 
       <table className="w-full text-sm">
@@ -63,10 +74,11 @@ export default function EpisodesTable({ episodes = [] }) {
           </tr>
         </thead>
         <tbody>
-          {episodes.length > 0 ? (
-            episodes.map((ep) => {
+          {visibleEpisodes.length > 0 ? (
+            visibleEpisodes.map((ep) => {
+              const rawId = ep.rawId ?? ep.id; // fallback kalau rawId belum disediakan
               const canDelete = ep.status !== "processing" && ep.status !== "pending";
-              const isDeleting = deletingId === ep.id;
+              const isDeleting = deletingId === rawId;
 
               return (
                 <tr key={ep.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
@@ -121,7 +133,7 @@ export default function EpisodesTable({ episodes = [] }) {
 
                       {ep.status === "failed" && (
                         <button
-                          onClick={() => handleRetry(ep.id, ep.title)}
+                          onClick={() => handleRetry(rawId, ep.title)}
                           disabled={isLoading}
                           className="text-xs text-indigo-400 hover:text-indigo-300 font-bold px-2 py-1 rounded hover:bg-indigo-400/10 transition disabled:opacity-50"
                         >
@@ -131,7 +143,7 @@ export default function EpisodesTable({ episodes = [] }) {
 
                       {canDelete && (
                         <button
-                          onClick={() => handleDelete(ep.id, ep.title)}
+                          onClick={() => handleDelete(rawId, ep.title)}
                           disabled={isDeleting}
                           className={`text-xs text-fuchsia-400 hover:text-fuchsia-300 font-bold px-2 py-1 rounded hover:bg-fuchsia-400/10 transition disabled:opacity-50 ${
                             isDeleting ? "animate-pulse" : ""
